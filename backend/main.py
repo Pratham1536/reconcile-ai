@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from database import engine
 
 app = FastAPI(
     title="ReconcileAI API",
@@ -7,7 +8,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Allow the React frontend to communicate with the backend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
@@ -29,3 +29,18 @@ def health():
     return {
         "status": "healthy"
     }
+
+
+@app.get("/database-health")
+def database_health():
+    try:
+        with engine.connect():
+            return {
+                "database": "connected"
+            }
+
+    except Exception as e:
+        return {
+            "database": "connection failed",
+            "error": str(e)
+        }
