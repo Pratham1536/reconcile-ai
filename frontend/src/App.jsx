@@ -28,6 +28,10 @@ function App() {
   const [investigation, setInvestigation] = useState(null);
   const [investigating, setInvestigating] = useState(false);
   const [investigationError, setInvestigationError] = useState("");
+  const [reviewerNotes, setReviewerNotes] = useState("");
+  const [resolutionSaving, setResolutionSaving] = useState(false);
+  const [resolutionMessage, setResolutionMessage] = useState("");
+
 
   const loadExceptions = useCallback(async () => {
     try {
@@ -117,6 +121,79 @@ async function runReconciliation() {
       setInvestigating(false);
     }
   }
+  
+  
+const submitResolution = async (decision) => {
+  if (resolutionSaving || !selectedException) return;
+
+  const exceptionId = selectedException.exception_id;
+
+  try {
+    setResolutionSaving(true);
+    setResolutionMessage("");
+
+    const response = await fetch(
+      `${API}/exceptions/${exceptionId}/resolution`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          decision,
+          reviewer_notes: reviewerNotes,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail || "Could not save review decision"
+      );
+    }
+
+    const saved = data.resolution;
+
+    setExceptions((previous) =>
+      previous.map((item) =>
+        item.exception_id === exceptionId
+          ? {
+              ...item,
+              latest_decision: saved.decision,
+              reviewer_notes: saved.reviewer_notes,
+              reviewed_at: saved.reviewed_at,
+            }
+          : item
+      )
+    );
+
+    setSelectedException((previous) =>
+      previous?.exception_id === exceptionId
+        ? {
+            ...previous,
+            latest_decision: saved.decision,
+            reviewer_notes: saved.reviewer_notes,
+            reviewed_at: saved.reviewed_at,
+          }
+        : previous
+    );
+
+    setResolutionMessage(
+      `Recommendation ${saved.decision} successfully.`
+    );
+    setReviewerNotes("");
+  } catch (err) {
+    setResolutionMessage(
+      err.message || "Failed to save review decision"
+    );
+  } finally {
+    setResolutionSaving(false);
+  }
+};
+
+
 
 
 
@@ -547,6 +624,36 @@ onClick={() => {
                 </div>
               </div>
 
+              
+              {selectedException.latest_decision && (
+                <div className="resolution-review-status">
+                  <h3>Latest Review Decision</h3>
+
+                  <p>
+                    Decision:{" "}
+                    <strong>
+                      {selectedException.latest_decision
+                        .charAt(0)
+                        .toUpperCase() +
+                        selectedException.latest_decision.slice(1)}
+                    </strong>
+                  </p>
+
+                  <p>
+                    Reviewer notes:{" "}
+                    {selectedException.reviewer_notes || "No notes provided"}
+                  </p>
+
+                  <p>
+                    Reviewed at:{" "}
+                    {selectedException.reviewed_at
+                      ? new Date(selectedException.reviewed_at).toLocaleString("en-IN")
+                      : "—"}
+                  </p>
+                </div>
+              )}
+
+
               <div className="evidence-panel">
                 <h3>Current explanation</h3>
                 <p>
@@ -721,20 +828,60 @@ onClick={() => {
               )}
 
 
-              <div className="modal-footer">
-                <span>
-                  <span className="online-dot" /> Recorded in Supabase
-                </span>
-                
-                <button
-                  className="primary-button"
-                  disabled={investigating}
-                  onClick={() => runInvestigation(selectedException.exception_id)}
-                >
-                  {investigating ? "Investigating..." : "Investigate with AI"}
-                </button>
+              
+                <div className="modal-footer">
+                  <span>
+                    <span className="online-dot" /> Recorded in Supabase
+                  </span>
 
-              </div>
+                  <button
+                    className="primary-button"
+                    disabled={investigating}
+                    onClick={() => runInvestigation(selectedException.exception_id)}
+                  >
+                    {investigating ? "Investigating..." : "Investigate with AI"}
+                  </button>
+                </div>
+
+                <div className="resolution-review">
+                  <h3>Review recommendation</h3>
+                  <p>
+                    Check the investigation evidence before recording your decision.
+                  </p>
+
+                  <textarea
+                    value={reviewerNotes}
+                    onChange={(e) => setReviewerNotes(e.target.value)}
+                    placeholder="Enter reviewer notes (optional)"
+                    rows={3}
+                    disabled={resolutionSaving}
+                  />
+
+                  <div className="resolution-actions">
+                    <button
+                      type="button"
+                      className="approve-button"
+                      disabled={resolutionSaving || Boolean(selectedException.latest_decision)}
+                      onClick={() => submitResolution("approved")}
+                    >
+                      {resolutionSaving ? "Saving..." : "Approve recommendation"}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="reject-button"
+                      disabled={resolutionSaving || Boolean(selectedException.latest_decision)}
+                      onClick={() => submitResolution("rejected")}
+                    >
+                      {resolutionSaving ? "Saving..." : "Reject recommendation"}
+                    </button>
+                  </div>
+
+                  {resolutionMessage && (
+                    <p role="status">{resolutionMessage}</p>
+                  )}
+                </div>
+
             </section>
           </div>
         )}

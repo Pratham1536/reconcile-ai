@@ -2,6 +2,7 @@ from investigation import investigate_exception
 from reconciliation import reconcile_transactions
 from sqlalchemy import text
 from fastapi import FastAPI
+from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine
 
@@ -79,14 +80,28 @@ def get_exceptions():
             e.difference_amount,
             e.status,
             e.root_cause,
-            e.created_at
+            e.created_at,
+            r.decision AS latest_decision,
+            r.reviewer_notes,
+            r.reviewed_at
         FROM exceptions e
         LEFT JOIN invoices i
             ON e.invoice_id = i.invoice_id
         LEFT JOIN transactions t
             ON e.transaction_id = t.transaction_id
+        LEFT JOIN LATERAL (
+            SELECT
+                decision,
+                reviewer_notes,
+                reviewed_at
+            FROM exception_resolutions
+            WHERE exception_id = e.exception_id
+            ORDER BY reviewed_at DESC, resolution_id DESC
+            LIMIT 1
+        ) r ON TRUE
         ORDER BY e.exception_id DESC
     """)
+
 
     with engine.connect() as conn:
         rows = conn.execute(query).mappings().all()
@@ -143,5 +158,64 @@ def run_exception_investigation(exception_id: int):
         )
 
     return result
+
+
+from pydantic import BaseModel
+from typing import Literal
+
+
+class ResolutionDecision(BaseModel):
+    decision: Literal["approved", "rejected"]
+    reviewer_notes: str = ""
+
+
+@app.post("/exceptions/{exception_id}/resolution")
+def record_resolution(
+    exception_id: int,
+    payload: ResolutionDecision,
+):
+    with engine.begin() as conn:
+        exception = conn.execute(
+            text("""
+                SELECT exception_id
+                FROM exceptions
+                WHERE exception_id = :exception_id
+            """),
+            {"exception_id": exception_id},
+        ).first()
+
+        if exception is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Exception not found",
+            )
+
+        result = conn.execute(
+            text("""
+                INSERT INTO exception_resolutions (
+                    exception_id,
+                    decision,
+                    reviewer_notes
+                )
+                VALUES (
+                    :exception_id,
+                    :decision,
+                    :reviewer_notes
+                )
+                RETURNING resolution_id, exception_id,
+                          decision, reviewer_notes, reviewed_at
+            """),
+            {
+                "exception_id": exception_id,
+                "decision": payload.decision,
+                "reviewer_notes": payload.reviewer_notes,
+            },
+        ).mappings().one()
+
+    return {
+        "success": True,
+        "resolution": dict(result),
+    }
+
 
 
