@@ -169,17 +169,20 @@ class ResolutionDecision(BaseModel):
     reviewer_notes: str = ""
 
 
+
 @app.post("/exceptions/{exception_id}/resolution")
 def record_resolution(
     exception_id: int,
     payload: ResolutionDecision,
 ):
     with engine.begin() as conn:
+        # Lock this exception row to serialize concurrent reviews.
         exception = conn.execute(
             text("""
                 SELECT exception_id
                 FROM exceptions
                 WHERE exception_id = :exception_id
+                FOR UPDATE
             """),
             {"exception_id": exception_id},
         ).first()
@@ -190,6 +193,26 @@ def record_resolution(
                 detail="Exception not found",
             )
 
+        # Check whether a current decision already exists.
+        existing = conn.execute(
+            text("""
+                SELECT resolution_id
+                FROM exception_current_decisions
+                WHERE exception_id = :exception_id
+            """),
+            {"exception_id": exception_id},
+        ).first()
+
+        if existing is not None:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "A review decision has already been recorded "
+                    "for this exception."
+                ),
+            )
+
+        # Preserve the review in the history table.
         result = conn.execute(
             text("""
                 INSERT INTO exception_resolutions (
@@ -212,10 +235,31 @@ def record_resolution(
             },
         ).mappings().one()
 
+        saved = dict(result)
+
+        # Record the current decision in the same transaction.
+        conn.execute(
+            text("""
+                INSERT INTO exception_current_decisions (
+                    exception_id,
+                    resolution_id
+                )
+                VALUES (
+                    :exception_id,
+                    :resolution_id
+                )
+            """),
+            {
+                "exception_id": exception_id,
+                "resolution_id": saved["resolution_id"],
+            },
+        )
+
     return {
         "success": True,
-        "resolution": dict(result),
+        "resolution": saved,
     }
+
 
 
 

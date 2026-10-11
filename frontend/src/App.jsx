@@ -9,6 +9,8 @@ import {
   CircleDollarSign,
   CheckCircle,
   Search,
+  XCircle,
+  Clock
 } from "lucide-react";
 import "./App.css";
 
@@ -219,6 +221,22 @@ const resolvedTotal = exceptions.filter(
 ).length;
 
 
+const approvedTotal = exceptions.filter(
+  (item) => item.latest_decision === "approved"
+).length;
+
+const rejectedTotal = exceptions.filter(
+  (item) => item.latest_decision === "rejected"
+).length;
+
+const notReviewedTotal = exceptions.filter(
+  (item) =>
+    item.status === "open" &&
+    !item.latest_decision
+).length;
+
+
+
   
 const filteredExceptions = exceptions.filter((item) => {
   const matchesType =
@@ -372,6 +390,26 @@ const filteredExceptions = exceptions.filter((item) => {
             note="Exceptions marked resolved"
             icon={<CheckCircle size={20} />}
           />
+          
+          <Metric
+            label="Approved"
+            value={loading ? "—" : approvedTotal}
+            note="Recommendations approved"
+            icon={<CheckCircle size={20} />}
+          />
+          <Metric
+            label="Rejected"
+            value={loading ? "—" : rejectedTotal}
+            note="Recommendations rejected"
+            icon={<XCircle size={20} />}
+          />
+          <Metric
+            label="Not Reviewed"
+            value={loading ? "—" : notReviewedTotal}
+            note="Awaiting a human decision"
+            icon={<Clock size={20} />}
+          />
+
         </section>
 
         <section className="panel category-panel">
@@ -647,7 +685,20 @@ onClick={() => {
                   <p>
                     Reviewed at:{" "}
                     {selectedException.reviewed_at
-                      ? new Date(selectedException.reviewed_at).toLocaleString("en-IN")
+                      ? new Date(
+                            selectedException.reviewed_at.endsWith("Z")
+                              ? selectedException.reviewed_at
+                              : selectedException.reviewed_at + "Z"
+                          ).toLocaleString("en-IN", {
+                            timeZone: "Asia/Kolkata",
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                            hour12: true,
+                          })
                       : "—"}
                   </p>
                 </div>
