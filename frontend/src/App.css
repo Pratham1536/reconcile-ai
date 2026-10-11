@@ -400,3 +400,127 @@ td small { display: block; color: #a0a9b7; font-size: 10px; margin-top: 4px; }
   cursor: wait;
 }
 
+
+.payment-history-section {
+  margin-top: 24px;
+  text-align: left;
+}
+
+.payment-history-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin: 12px 0 16px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.payment-history-summary strong {
+  color: #172b4d;
+}
+
+.payment-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.payment-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.payment-history-table th,
+.payment-history-table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.payment-history-table th {
+  background: #f1f5f9;
+  color: #475569;
+  font-weight: 600;
+}
+
+.payment-history-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.payment-history-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.payment-history-note {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.investigation-timeline {
+  margin: 24px 0;
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  text-align: left;
+}
+
+.investigation-timeline h4 {
+  margin: 0 0 20px;
+}
+
+.timeline-stage {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  position: relative;
+  padding-bottom: 22px;
+}
+
+.timeline-stage:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-marker {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.timeline-stage.completed .timeline-marker {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.timeline-stage.pending .timeline-marker {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.timeline-stage strong {
+  display: block;
+  margin: 3px 0 5px;
+}
+
+.timeline-stage p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+
+

@@ -7,6 +7,7 @@ import {
   Activity,
   Database,
   CircleDollarSign,
+  CheckCircle,
   Search,
 } from "lucide-react";
 import "./App.css";
@@ -36,6 +37,7 @@ function App() {
 
       const data = await response.json();
       setExceptions(data.exceptions);
+            
       setTotal(data.total);
     } catch (err) {
       setError(err.message);
@@ -118,12 +120,27 @@ async function runReconciliation() {
 
 
 
-  const counts = exceptions.reduce((result, item) => {
+  
+const openExceptions = exceptions.filter(
+  (item) => item.status === "open"
+);
 
-    result[item.exception_type] =
-      (result[item.exception_type] || 0) + 1;
-    return result;
-  }, {});
+const counts = openExceptions.reduce((result, item) => {
+  result[item.exception_type] =
+    (result[item.exception_type] || 0) + 1;
+  return result;
+}, {});
+
+const openTotal = openExceptions.length;
+
+const investigatingTotal = exceptions.filter(
+  (item) => item.status === "investigating"
+).length;
+
+const resolvedTotal = exceptions.filter(
+  (item) => item.status === "resolved"
+).length;
+
 
   
 const filteredExceptions = exceptions.filter((item) => {
@@ -237,7 +254,7 @@ const filteredExceptions = exceptions.filter((item) => {
         <section className="metrics-grid">
           <Metric
             label="Open exceptions"
-            value={loading ? "—" : total.toLocaleString("en-IN")}
+            value={loading ? "—" : openTotal.toLocaleString("en-IN")}
             note="Detected by reconciliation"
             icon={<AlertTriangle size={20} />}
           />
@@ -264,6 +281,19 @@ const filteredExceptions = exceptions.filter((item) => {
             }
             note="Requires further review"
             icon={<Activity size={20} />}
+          />
+          <Metric
+            label="Investigating"
+            value={loading ? "—" : investigatingTotal}
+            note="Currently under investigation"
+            icon={<Activity size={20} />}
+          />
+
+          <Metric
+            label="Resolved"
+            value={loading ? "—" : resolvedTotal}
+            note="Exceptions marked resolved"
+            icon={<CheckCircle size={20} />}
           />
         </section>
 
@@ -382,7 +412,13 @@ const filteredExceptions = exceptions.filter((item) => {
                     <tr
   key={item.exception_id}
   className="clickable-row"
-  onClick={() => setSelectedException(item)}
+  
+onClick={() => {
+  setInvestigation(null);
+  setInvestigationError("");
+  setSelectedException(item);
+}}
+
   title="Click to view exception details"
 >
                       <td>
@@ -442,7 +478,11 @@ const filteredExceptions = exceptions.filter((item) => {
 
                 <button
                   className="close-button"
-                  onClick={() => setSelectedException(null)}
+                   onClick={() => {
+                    setSelectedException(null);
+                    setInvestigation(null);
+                    setInvestigationError("");
+                  }}
                 >
                   ×
                 </button>
@@ -451,12 +491,20 @@ const filteredExceptions = exceptions.filter((item) => {
               <div className="detail-grid">
                 <div className="detail-card">
                   <span>Exception type</span>
-                  <strong>{selectedException.exception_type.replaceAll("_", " ")}</strong>
+                  <strong>
+                    {selectedException.exception_type
+                      .replaceAll("_", " ")
+                      .replace(/\b\w/g, (char) => char.toUpperCase())}
+                  </strong>
                 </div>
 
                 <div className="detail-card">
                   <span>Status</span>
-                  <strong>{selectedException.status}</strong>
+                  <strong>
+                    {selectedException.status
+                      .replaceAll("_", " ")
+                      .replace(/\b\w/g, (char) => char.toUpperCase())}
+                  </strong>
                 </div>
 
                 <div className="detail-card">
@@ -481,6 +529,20 @@ const filteredExceptions = exceptions.filter((item) => {
                       style: "currency",
                       currency: "INR",
                     }).format(Number(selectedException.difference_amount || 0))}
+                  </strong>
+                </div>
+                <div className="detail-card">
+                  <span>Created at</span>
+                  <strong>
+                    {selectedException.created_at
+                      ? new Date(selectedException.created_at).toLocaleString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "—"}
                   </strong>
                 </div>
               </div>
@@ -509,6 +571,43 @@ const filteredExceptions = exceptions.filter((item) => {
               {investigation && (
                 <div className="ai-investigation-panel">
                   <h3>Investigation results</h3>
+                  
+                    <div className="investigation-timeline">
+                      <h4>Investigation Timeline</h4>
+
+                      <div className="timeline-stage completed">
+                        <span className="timeline-marker">✓</span>
+                        <div>
+                          <strong>Exception detected</strong>
+                          <p>Reconciliation identified an exception for review.</p>
+                        </div>
+                      </div>
+
+                      <div className="timeline-stage completed">
+                        <span className="timeline-marker">✓</span>
+                        <div>
+                          <strong>AI investigation completed</strong>
+                          <p>Evidence collected and root cause assessed.</p>
+                        </div>
+                      </div>
+
+                      <div className="timeline-stage completed">
+                        <span className="timeline-marker">✓</span>
+                        <div>
+                          <strong>Resolution recommended</strong>
+                          <p>Recommended next steps are available for review.</p>
+                        </div>
+                      </div>
+
+                      <div className="timeline-stage pending">
+                        <span className="timeline-marker">4</span>
+                        <div>
+                          <strong>Human approval pending</strong>
+                          <p>Review the evidence before taking any financial action.</p>
+                        </div>
+                      </div>
+                    </div>
+
 
                   <div className="investigation-summary">
                     <span>Root cause</span>
@@ -522,6 +621,7 @@ const filteredExceptions = exceptions.filter((item) => {
                     </strong>
                   </div>
 
+                  
                   <h4>Evidence collected</h4>
                   <ul>
                     {investigation.evidence.map((item, index) => (
@@ -533,6 +633,81 @@ const filteredExceptions = exceptions.filter((item) => {
                       </li>
                     ))}
                   </ul>
+
+                  {investigation.evidence
+                    .filter(
+                      (item) =>
+                        item.source === "customer_payment_history" &&
+                        Array.isArray(item.payments) &&
+                        item.payments.length > 0
+                    )
+                    .map((item) => (
+                      <div className="payment-history-section" key={item.source}>
+                        <h4>Customer Payment History</h4>
+
+                        <div className="payment-history-summary">
+                          <span>
+                            Customer ID: <strong>{item.customer_id}</strong>
+                          </span>
+                          <span>
+                            Transactions found: <strong>{item.transactions_found}</strong>
+                          </span>
+                          <span>
+                            Linked to other invoices:{" "}
+                            <strong>{item.linked_to_other_invoices}</strong>
+                          </span>
+                        </div>
+
+                        <div className="payment-table-wrapper">
+                          <table className="payment-history-table">
+                            <thead>
+                              <tr>
+                                <th>Transaction ID</th>
+                                <th>Reference</th>
+                                <th>Amount</th>
+                                <th>Linked Invoice</th>
+                                <th>Date</th>
+                              </tr>
+                            </thead>
+
+                            <tbody>
+                              {item.payments.map((payment) => (
+                                <tr key={payment.transaction_id}>
+                                  <td>{payment.transaction_id}</td>
+                                  <td>{payment.reference || "—"}</td>
+                                  <td>
+                                    {new Intl.NumberFormat("en-IN", {
+                                      style: "currency",
+                                      currency: "INR",
+                                      maximumFractionDigits: 2,
+                                    }).format(Number(payment.amount || 0))}
+                                  </td>
+                                  <td>{payment.linked_invoice_id ?? "—"}</td>
+                                  <td>
+                                    {payment.transaction_date
+                                      ? new Date(
+                                          payment.transaction_date
+                                        ).toLocaleDateString("en-IN", {
+                                          day: "2-digit",
+                                          month: "short",
+                                          year: "numeric",
+                                          timeZone: "UTC",
+                                        })
+                                      : "—"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <p className="payment-history-note">
+                          These payments are linked to other invoices. Treat them as
+                          investigation evidence only; do not automatically reassign them.
+                        </p>
+                      </div>
+                    ))}
+
 
                   <h4>Recommended resolution</h4>
                   <p>{investigation.recommended_resolution}</p>
