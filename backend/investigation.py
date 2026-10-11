@@ -41,8 +41,10 @@ def investigate_exception(exception_id: int):
         invoice = None
         transaction = None
         settlements = []
-        
         customer_payments = []
+        
+        
+        tools_checked = []
 
 
 
@@ -56,10 +58,11 @@ def investigate_exception(exception_id: int):
                 """),
                 {"invoice_id": exception["invoice_id"]},
             ).mappings().first()
+            tools_checked.append("Invoice details")
 
         
         if invoice is not None:
-             customer_payments = conn.execute(
+            customer_payments = conn.execute(
                 text("""
                     SELECT
                             transaction_id,
@@ -77,7 +80,8 @@ def investigate_exception(exception_id: int):
                         LIMIT 20
                     """),
                     {"customer_id": invoice["customer_id"]},
-                ).mappings().all()
+            ).mappings().all()
+            tools_checked.append("Customer payment history")
 
         print(
             "DEBUG: customer ID:",
@@ -98,6 +102,7 @@ def investigate_exception(exception_id: int):
                 """),
                 {"transaction_id": exception["transaction_id"]},
             ).mappings().first()
+            tools_checked.append("Transaction details")
 
         if transaction is not None:
             settlements = conn.execute(
@@ -109,6 +114,7 @@ def investigate_exception(exception_id: int):
                 """),
                 {"transaction_id": transaction["transaction_id"]},
             ).mappings().all()
+            tools_checked.append("Settlement details")
 
     if invoice:
         evidence.append({
@@ -330,7 +336,7 @@ def investigate_exception(exception_id: int):
                 "Escalate for human review. Verify customer identity and "
                 "invoice mapping before making any accounting changes."
             )
-            confidence = 0.95
+            confidence = 0.95  # Strong evidence of a customer-ID mismatch
 
     # Check every payment included in duplicate_analysis.
     duplicate_analysis = next(
@@ -366,7 +372,24 @@ def investigate_exception(exception_id: int):
             )
             confidence = 0.95
 
+    
+    if confidence >= 0.90:
+        confidence_reason = (
+            "Strong evidence supports the identified discrepancy, "
+            "but the recommended action still requires human review."
+        )
+    elif confidence >= 0.70:
+        confidence_reason = (
+            "Available evidence supports the suspected issue, "
+            "but additional verification is needed."
+        )
+    else:
+        confidence_reason = (
+            "Evidence is limited or inconclusive. "
+            "Verify the relevant records before taking action."
+        )
 
+    
     return {
         "success": True,
         "exception": dict(exception),
@@ -376,5 +399,7 @@ def investigate_exception(exception_id: int):
             "evidence": evidence,
             "recommended_resolution": resolution,
             "requires_human_approval": True,
+            "tools_checked": tools_checked,
+            "confidence_reason": confidence_reason,
         },
     }

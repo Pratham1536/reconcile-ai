@@ -679,41 +679,94 @@ onClick={() => {
                 <div className="ai-investigation-panel">
                   <h3>Investigation results</h3>
                   
-                    <div className="investigation-timeline">
-                      <h4>Investigation Timeline</h4>
+                  {investigation && (
+                    <div className="confidence-section">
+                      <h4>
+                        Investigation Confidence:{" "}
+                        {Math.round(
+                          Number(investigation.confidence ?? 0) * 100
+                        )}%
+                      </h4>
 
-                      <div className="timeline-stage completed">
-                        <span className="timeline-marker">✓</span>
-                        <div>
-                          <strong>Exception detected</strong>
-                          <p>Reconciliation identified an exception for review.</p>
-                        </div>
-                      </div>
-
-                      <div className="timeline-stage completed">
-                        <span className="timeline-marker">✓</span>
-                        <div>
-                          <strong>AI investigation completed</strong>
-                          <p>Evidence collected and root cause assessed.</p>
-                        </div>
-                      </div>
-
-                      <div className="timeline-stage completed">
-                        <span className="timeline-marker">✓</span>
-                        <div>
-                          <strong>Resolution recommended</strong>
-                          <p>Recommended next steps are available for review.</p>
-                        </div>
-                      </div>
-
-                      <div className="timeline-stage pending">
-                        <span className="timeline-marker">4</span>
-                        <div>
-                          <strong>Human approval pending</strong>
-                          <p>Review the evidence before taking any financial action.</p>
-                        </div>
-                      </div>
+                      <p>
+                        {investigation.confidence_reason ||
+                          "No confidence explanation available."}
+                      </p>
                     </div>
+                  )}
+
+                  
+                    
+                <div className="investigation-timeline">
+                  <h4>Investigation Timeline</h4>
+
+                  <div className="timeline-stage completed">
+                    <span className="timeline-marker">✓</span>
+                    <div>
+                      <strong>Exception detected</strong>
+                      <p>Reconciliation identified an exception for review.</p>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`timeline-stage ${
+                      investigation ? "completed" : "pending"
+                    }`}
+                  >
+                    <span className="timeline-marker">
+                      {investigation ? "✓" : "2"}
+                    </span>
+                    <div>
+                      <strong>AI investigation</strong>
+                      <p>
+                        {investigation
+                          ? "Investigation results are available."
+                          : "Run Investigate with AI to collect evidence."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`timeline-stage ${
+                      investigation?.recommended_resolution
+                        ? "completed"
+                        : "pending"
+                    }`}
+                  >
+                    <span className="timeline-marker">
+                      {investigation?.recommended_resolution ? "✓" : "3"}
+                    </span>
+                    <div>
+                      <strong>Resolution recommendation</strong>
+                      <p>
+                        {investigation?.recommended_resolution
+                          ? "A recommended next step is available for review."
+                          : "A recommendation will appear after investigation."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`timeline-stage ${
+                      selectedException?.latest_decision
+                        ? "completed"
+                        : "pending"
+                    }`}
+                  >
+                    <span className="timeline-marker">
+                      {selectedException?.latest_decision ? "✓" : "4"}
+                    </span>
+                    <div>
+                      <strong>Human review decision</strong>
+                      <p>
+                        {selectedException?.latest_decision
+                          ? `Decision recorded: ${selectedException.latest_decision}.`
+                          : "Review the evidence and record an approval or rejection."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
 
 
                   <div className="investigation-summary">
