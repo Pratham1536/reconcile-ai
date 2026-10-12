@@ -68,7 +68,7 @@ from database import engine
 
 
 @app.get("/exceptions")
-def get_exceptions():
+def get_exceptions():  
     query = text("""
         SELECT
             e.exception_id,
@@ -89,18 +89,13 @@ def get_exceptions():
             ON e.invoice_id = i.invoice_id
         LEFT JOIN transactions t
             ON e.transaction_id = t.transaction_id
-        LEFT JOIN LATERAL (
-            SELECT
-                decision,
-                reviewer_notes,
-                reviewed_at
-            FROM exception_resolutions
-            WHERE exception_id = e.exception_id
-            ORDER BY reviewed_at DESC, resolution_id DESC
-            LIMIT 1
-        ) r ON TRUE
+        LEFT JOIN exception_current_decisions c
+            ON c.exception_id = e.exception_id
+        LEFT JOIN exception_resolutions r
+            ON r.resolution_id = c.resolution_id
         ORDER BY e.exception_id DESC
     """)
+
 
 
     with engine.connect() as conn:

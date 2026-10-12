@@ -33,6 +33,7 @@ function App() {
   const [reviewerNotes, setReviewerNotes] = useState("");
   const [resolutionSaving, setResolutionSaving] = useState(false);
   const [resolutionMessage, setResolutionMessage] = useState("");
+  const [reviewFilter, setReviewFilter] = useState("all");
 
 
   const loadExceptions = useCallback(async () => {
@@ -230,20 +231,25 @@ const rejectedTotal = exceptions.filter(
 ).length;
 
 const notReviewedTotal = exceptions.filter(
-  (item) =>
-    item.status === "open" &&
-    !item.latest_decision
+  (item) => !item.latest_decision
 ).length;
 
 
 
   
+
 const filteredExceptions = exceptions.filter((item) => {
   const matchesType =
     filter === "all" || item.exception_type === filter;
 
   const matchesStatus =
     statusFilter === "all" || item.status === statusFilter;
+
+  const matchesReview =
+    reviewFilter === "all" ||
+    (reviewFilter === "not_reviewed"
+      ? !item.latest_decision
+      : item.latest_decision === reviewFilter);
 
   const query = search.trim().toLowerCase();
 
@@ -254,10 +260,15 @@ const filteredExceptions = exceptions.filter((item) => {
     item.root_cause,
     String(item.exception_id),
   ].some((value) =>
-    (value || "").toLowerCase().includes(query)
+    String(value || "").toLowerCase().includes(query)
   );
 
-  return matchesType && matchesStatus && matchesSearch;
+  return (
+    matchesType &&
+    matchesStatus &&
+    matchesReview &&
+    matchesSearch
+  );
 });
 
 
@@ -490,13 +501,27 @@ const filteredExceptions = exceptions.filter((item) => {
     <option value="resolved">Resolved</option>
   </select>
 
+  
+<select
+  value={reviewFilter}
+  onChange={(e) => setReviewFilter(e.target.value)}
+>
+  <option value="all">All review decisions</option>
+  <option value="approved">Approved</option>
+  <option value="rejected">Rejected</option>
+  <option value="not_reviewed">Not reviewed</option>
+</select>
+
+
   <button
     className="clear-filters-button"
-    onClick={() => {
-      setSearch("");
-      setFilter("all");
-      setStatusFilter("all");
-    }}
+        onClick={() => {
+          setSearch("");
+          setFilter("all");
+          setStatusFilter("all");
+          setReviewFilter("all");
+        }}
+
   >
     Clear filters
   </button>
